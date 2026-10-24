@@ -20,6 +20,7 @@ dev = [
     "ipykernel==7.4.0",
     "ruff==0.16.9",
     "mypy>=2.4.0",
+    "import-linter>=2.15",
 ]
 test = [
     "pytest>=9.1.1",

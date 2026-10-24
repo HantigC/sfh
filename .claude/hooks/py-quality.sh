@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# PostToolUse hook: format, lint and type-check a Python file Claude just edited.
+# PostToolUse hook: format, lint and type-check a Python file Claude just edited,
+# then check the architecture's import contracts (see docs/architecture.md).
 # Exit 2 feeds remaining errors back to Claude so it fixes them.
 set -uo pipefail
 
@@ -22,7 +23,10 @@ if ! out=$(uv run --quiet ruff check --fix "$file" 2>&1); then
   errors+="ruff:\n$out\n\n"
 fi
 if ! out=$(uv run --quiet mypy "$file" 2>&1); then
-  errors+="mypy:\n$out\n"
+  errors+="mypy:\n$out\n\n"
+fi
+if ! out=$(uv run --quiet lint-imports --no-cache 2>&1); then
+  errors+="import-linter (layering rules in docs/architecture.md):\n$out\n"
 fi
 
 if [[ -n "$errors" ]]; then

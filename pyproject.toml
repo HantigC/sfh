@@ -1,18 +1,26 @@
 [project]
-name = "sfh"
+name = "sfh-workspace"
 version = "0.1.0"
-description = "Add your description here"
+description = "Workspace root: dev tooling for the sfh library and its apps"
 authors = [
     { name = "HantigC", email = "cristianhantig96@gmail.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "sfh[opencv]",
+    "sfh-cli",
     "mistralai>=3.0.0",
 ]
 
-[build-system]
-requires = ["uv_build>=0.10.7,<0.11.0"]
-build-backend = "uv_build"
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*", "apps/*"]
+
+[tool.uv.sources]
+sfh = { workspace = true }
+sfh-cli = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -32,7 +40,7 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["src", "tests"]
+src = ["packages/sfh/src", "apps/sfh-cli/src", "tests"]
 extend-exclude = ["deps", "data", "ipynbs"]
 
 [tool.ruff.lint]
@@ -44,7 +52,27 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "ANN"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src", "tests"]
+files = ["packages/sfh/src", "apps/sfh-cli/src", "tests"]
 exclude = ["^deps/", "^data/", "^ipynbs/"]
 warn_unreachable = true
 pretty = true
+
+[tool.importlinter]
+root_packages = ["sfh", "sfh_cli"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Hexagonal layers"
+type = "layers"
+layers = ["sfh_cli", "sfh.infrastructure", "sfh.application", "sfh.mapping", "sfh.domain"]
+
+[[tool.importlinter.contracts]]
+name = "Domain, mapping and application stay pure"
+type = "forbidden"
+source_modules = ["sfh.domain", "sfh.mapping", "sfh.application"]
+forbidden_modules = ["sqlite3", "cv2", "pycolmap", "torch", "typer", "rich"]
+
+[[tool.importlinter.contracts]]
+name = "Adapters are independent of each other"
+type = "independence"
+modules = ["sfh.infrastructure.sqlite", "sfh.infrastructure.features", "sfh.infrastructure.io"]

@@ -1,0 +1,20 @@
+[project]
+name = "sfh"
+version = "0.1.0"
+description = "Structure from harness: domain, pipeline steps and adapters for 3D reconstruction"
+authors = [
+    { name = "HantigC", email = "cristianhantig96@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.0",
+]
+
+[project.optional-dependencies]
+opencv = [
+    "opencv-python-headless>=4.10",
+]
+
+[build-system]
+requires = ["uv_build>=0.10.7,<0.11.0"]
+build-backend = "uv_build"

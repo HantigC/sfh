@@ -1,0 +1,22 @@
+[project]
+name = "sfh-cli"
+version = "0.1.0"
+description = "Command-line entrypoint for the sfh reconstruction library"
+authors = [
+    { name = "HantigC", email = "cristianhantig96@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "sfh[opencv]",
+    "typer>=0.12",
+]
+
+[project.scripts]
+sfh = "sfh_cli.main:app"
+
+[tool.uv.sources]
+sfh = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.10.7,<0.11.0"]
+build-backend = "uv_build"

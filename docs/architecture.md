@@ -6,36 +6,48 @@ SQLite, OpenCV, pycolmap or torch. Those are adapters plugged in from the outsid
 
 ## Layout
 
-```
-packages/sfh/src/sfh/        LIB, installable on its own
-├── domain/                  entities + ports. stdlib and numpy only
-│   ├── ids.py               DatasetId, ImageId, FeatureConfigId (NewType over int)
-│   ├── entities.py          Dataset, Image, FeatureConfig, Keypoints, Descriptors, ...
-│   ├── errors.py            SfhError and subclasses. Entrypoints map these to exit codes / HTTP
-│   └── ports/               Protocols the adapters implement
-│       ├── repositories.py  storage, one repository per aggregate
-│       ├── unit_of_work.py  transaction boundary over all repositories
-│       ├── features.py      ImageLoader, FeatureExtractor, Matcher, PairSelector
-│       └── progress.py      ProgressReporter (+ NullProgress)
-├── mapping/                 reconstruction strategies implementing the Mapper port
-├── application/             use cases = pipeline steps. Every entrypoint calls these
-└── infrastructure/          adapters: the only code that imports sqlite3/cv2/pycolmap/torch
-    ├── sqlite/              repositories, unit of work, schema + migrations, numpy<->BLOB
-    ├── features/            SiftExtractor, ...
-    └── io/                  OpenCvImageLoader
+```mermaid
+flowchart TB
+    subgraph lib["packages/sfh/src/sfh/ · LIB, installable on its own"]
+        direction TB
+        subgraph domain["domain/ · entities + ports. stdlib and numpy only"]
+            ids["<b>ids.py</b><br/>DatasetId, ImageId, FeatureConfigId (NewType over int)"]
+            entities["<b>entities.py</b><br/>Dataset, Image, FeatureConfig, Keypoints, Descriptors, ..."]
+            errors["<b>errors.py</b><br/>SfhError and subclasses. Entrypoints map these to exit codes / HTTP"]
+            subgraph ports["ports/ · Protocols the adapters implement"]
+                repositories["<b>repositories.py</b><br/>storage, one repository per aggregate"]
+                uow["<b>unit_of_work.py</b><br/>transaction boundary over all repositories"]
+                features_port["<b>features.py</b><br/>ImageLoader, FeatureExtractor, Matcher, PairSelector"]
+                progress_port["<b>progress.py</b><br/>ProgressReporter (+ NullProgress)"]
+            end
+        end
+        mapping["<b>mapping/</b><br/>reconstruction strategies implementing the Mapper port"]
+        application["<b>application/</b><br/>use cases = pipeline steps. Every entrypoint calls these"]
+        subgraph infrastructure["infrastructure/ · adapters: the only code that imports sqlite3/cv2/pycolmap/torch"]
+            sqlite["<b>sqlite/</b><br/>repositories, unit of work, schema + migrations, numpy&lt;-&gt;BLOB"]
+            features_adapter["<b>features/</b><br/>SiftExtractor, ..."]
+            io["<b>io/</b><br/>OpenCvImageLoader"]
+        end
+    end
 
-apps/sfh-cli/src/sfh_cli/    BIN
-├── container.py             composition root: the only place that picks concrete adapters
-├── progress.py              RichProgress (a ProgressReporter)
-└── main.py                  typer commands. Parse input, call a step, print the result
+    subgraph bin["apps/sfh-cli/src/sfh_cli/ · BIN"]
+        container["<b>container.py</b><br/>composition root: the only place that picks concrete adapters"]
+        progress_cli["<b>progress.py</b><br/>RichProgress (a ProgressReporter)"]
+        main["<b>main.py</b><br/>typer commands. Parse input, call a step, print the result"]
+    end
 ```
 
 A future backend is `apps/sfh-api/` with its own `container.py`. It reuses the lib unchanged.
 
 ## The dependency rule
 
-```
-sfh_cli  →  sfh.infrastructure  →  sfh.application  →  sfh.mapping  →  sfh.domain
+```mermaid
+flowchart LR
+    cli[sfh_cli] --> infrastructure[sfh.infrastructure] --> application[sfh.application]
+    application --> mapping[sfh.mapping] --> domain[sfh.domain]
+
+    external["sqlite3 · cv2 · pycolmap · torch · typer · rich"]
+    application & mapping & domain -. never import .-x external
 ```
 
 A module may import only from layers to its right. On top of that:
@@ -69,10 +81,18 @@ by hand with `uv run lint-imports`.
 
 ## Pipeline
 
+```mermaid
+flowchart LR
+    add[dataset add] --> extract --> match["match<br/>(PairSelector + Matcher)"]
+    match --> verify[verify geometry] --> reconstruct --> export
+
+    classDef done fill:#c8e6c9,stroke:#2e7d32,color:#1b5e20
+    classDef next fill:#eeeeee,stroke:#9e9e9e,stroke-dasharray:4 3,color:#424242
+    class add,extract done
+    class match,verify,reconstruct,export next
 ```
-dataset add → extract → match (PairSelector + Matcher) → verify geometry → reconstruct → export
-  done          done        next                            next              next       next
-```
+
+Solid green steps are done; dashed grey steps are next.
 
 Reconstruction (the next design round): strategies in `sfh.mapping` (incremental, your own)
 only orchestrate: initial pair, next view, when to triangulate and when to run bundle

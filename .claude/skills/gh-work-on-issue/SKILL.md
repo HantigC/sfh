@@ -12,6 +12,23 @@ Status options: `TODO`, `In progress`, `In review`, `Done`. Priority: `P0`–`P2
 
 Argument: `$ARGUMENTS` (an issue number, optional).
 
+## Precondition: sync main from origin
+
+Before any step below, every time the skill runs (even when the issue branch already exists),
+update local `main` from `origin/main` without touching the working tree:
+
+```bash
+git fetch origin
+if [ "$(git branch --show-current)" = main ]; then
+  git pull --ff-only origin main
+else
+  git fetch origin main:main
+fi
+```
+
+If the fast-forward fails (local `main` has diverged from `origin/main`), stop and tell the user.
+Never reset or force anything on `main`.
+
 ## 1. Choose the issue
 
 If an issue number was given, skip to step 2.
@@ -53,22 +70,18 @@ gh project item-edit --project-id "$PROJECT_ID" --id "$ITEM_ID" \
 
 If it has no assignee, assign it: `gh issue edit <N> --repo HantigC/sfh --add-assignee @me`.
 
-## 4. Sync main and branch off it
+## 4. Branch off main
 
 Check `git status --short` first. If tracked files have uncommitted changes, show them and ask the
 user what to do before switching branches.
 
-If a branch for this issue already exists (`git branch --list '<N>-*'`), switch to it and skip the
-rest of this step. Otherwise:
+If a branch for this issue already exists (`git branch --list '<N>-*'`), switch to it and tell the
+user how many commits `main` is ahead of it (`git rev-list --count HEAD..main`); offer to rebase,
+don't do it unasked. Otherwise branch off the `main` synced in the precondition:
 
 ```bash
-git switch main
-git pull --ff-only origin main
-git switch -c <N>-<short-kebab-slug-of-title>
+git switch -c <N>-<short-kebab-slug-of-title> main
 ```
-
-If the fast-forward pull fails (local `main` has diverged from `origin/main`), stop and tell the
-user. Never reset or force anything on `main`.
 
 From here on, **all work for the issue happens on this branch**. Never commit to `main`.
 
